@@ -1,0 +1,135 @@
+---
+title: R Notebook
+output: html_notebook
+---
+#DATA CLEANING for Taxi data NYC
+
+```{r}
+################################Loading Data###############################
+library(dplyr)
+library(ISLR)
+Combined_Data <- read.csv("D:/UniversityData/Allstdydata/Datamining/Project/data/complete_data.csv")
+
+```
+```{r}
+   #Finding hour of the day with highest frequency of cabs
+#Combined_Data %>% group_by(Hour_of_the_day) %>% summarise(no=n()) %>% arrange(desc(no))
+#Filtered_Time_Data <-   filter(Combined_Data, (Hour_of_the_day==15) | (Hour_of_the_day==18 ) | (Hour_of_the_day=='09') )
+```
+```{r}
+################################ Data Cleaning ###############################
+# Checking and removing rows with nearzerovariance
+nearZeroVar(Combined_Data)  #Data reduction unsupervised approach
+#NZV_Removed_Data<-subset(Combined_Data,,-c(store_and_fwd_flag, RatecodeID,fare_amount,mta_tax,tolls_amount,ehail_fee,improvement_surcharge, trip_type))
+Combined_Data<-subset(Combined_Data,,-c(16))
+   #Adding an hour column
+#Combined_Data$Hour_of_the_day = format(as.POSIXct(Combined_Data$lpep_pickup_time,format="%H:%M"),"%H")
+  #impute missing values with median
+#Unnecessary_Attr_Removed$trip_distance[is.na(Unnecessary_Attr_Removed$trip_distance)] <- median(Unnecessary_Attr_Removed$trip_distance, na.rm = TRUE)
+library(VIM)
+#No missing values 
+colMeans(is.na(Combined_Data))
+  #impute 0 distance values with median
+#Unnecessary_Attr_Removed$trip_distance <- ifelse(Unnecessary_Attr_Removed$trip_distance == 0 & Unnecessary_Attr_Removed$PULocationID != #Unnecessary_Attr_Removed$DOLocationID, median(Unnecessary_Attr_Removed$trip_distance), Unnecessary_Attr_Removed$trip_distance)
+```
+```{r}
+################################Weather Data Cleaning###############################
+#Cleaning WeatherData
+library(scales)
+library(lubridate)
+#WeatherData <- read.csv("C:/Users/shiva/Documents/DataMining/Project Materials/Data/weather_data_nyc_centralpark.csv")
+#WeatherData$lpep_pickup_date <- dmy(WeatherData$lpep_pickup_date)
+#WeatherData$lpep_pickup_date <- format(as.Date(WeatherData$lpep_pickup_date),"%m/%d/%Y")
+#WeatherData$precipitation_NEW <- as.numeric(gsub("T",0.01,WeatherData$precipitation))
+#WeatherData$snow.fall_NEW <- as.numeric(gsub("T",0.01,WeatherData$snow.fall))
+#WeatherData$snow.depth <- as.numeric(gsub("T",0.01,WeatherData$snow.depth))
+Combined_Data$minimum.temperature <- as.numeric(gsub("/","",Combined_Data$minimum.temperature))
+
+#Temp=strptime(WeatherData$lpep_pickup_date,format='%m/%d/%Y',tz='America/New_York')
+#WeatherData$Month_of_year = as.numeric(format(Temp, "%m"))
+#WeatherData=filter(WeatherData,(Month_of_year==1) |(Month_of_year==2) | (Month_of_year==5)| (Month_of_year==6))
+```
+################################Merging Taxi and weather data###############################
+```{r}
+#Merging weather and taxi data
+#Combined_Data$lpep_pickup_date <- mdy(Combined_Data$lpep_pickup_date)
+#Combined_Data$lpep_pickup_date <- format(date(Combined_Data$lpep_pickup_date),"%m/%d/%Y")
+#merged_data <- merge(x=Combined_Data,y=WeatherData,by="lpep_pickup_date")
+```
+################################Feature extraction###############################
+```{r}
+#Combining Hour of the day and Location Id
+merged_data1<-Combined_Data
+merged_data1 <-  transform(merged_data1,Location_Hour=paste(PULocationID,Hour_of_the_day,sep="_"))
+merged_data1 <-  transform(merged_data1,Location_Day_Hour=paste(PULocationID,DayOfTheWeek,Hour_of_the_day,sep="_"))
+
+#Adding Pickups column
+Pickups=merged_data1 %>% group_by(Hour_of_the_day, lpep_pickup_date) %>% summarize(Pickups=n()) 
+merged_data1<-merge(merged_data1,Pickups, by=c("Hour_of_the_day","lpep_pickup_date"))
+#library(psych)
+#describeBy(merged_data1$Pickups,merged_data1$Hour_of_the_day)
+#pairs(merged_data1[,-c(2,3,4,10)])
+```
+```{r}
+#Diving into test,Validation and train
+index <- sample(1:nrow(merged_data1),round(0.6*nrow(merged_data1)))
+train_data <- merged_data1[index,]
+test <- merged_data1[-index,]
+
+index1 <- sample(1:nrow(test),round(0.5*nrow(test)))
+Validation_data <- test[index1,]
+Test_data <- test[-index,]
+```
+```{r}
+#Converting Data into Numeric
+#merged_data_train$DayOfTheWeek<- as.numeric(merged_data_train$DayOfTheWeek, levels = c("Mon", "Tues", "Wed","Thurs", "Fri", "Sat", "Sun"),ordered = TRUE)
+#merged_data_test$DayOfTheWeek<- as.numeric(merged_data_test$DayOfTheWeek, levels = c("Mon", "Tues", "Wed","Thurs", "Fri", "Sat", "Sun"),ordered = TRUE)
+```
+```{r}
+#Regression Model
+View(train_data)
+fit=lm(Pickups ~ Hour_of_the_day + PULocationID + lpep_pickup_date + lpep_pickup_time  + average.temperature +precipitation_NEW +snow.fall_NEW ,data=train_data)
+summary(fit)
+anova(fit)
+maxPickup <- max(train_data$Pickups)
+plot(predict(fit),train_data$Pickups,
+      xlab="predicted number of pickups",ylab="actual number of Pickups",col="Blue")
+Corner_text(text="Use Corner_text() function")
+hist(fit$residuals)
+qqnorm(fit$residuals,col="red")
+
+```
+```{r}
+library(rpart)
+library(ISLR)
+Treefit2<- rpart(Pickups ~ Location_Day_Hour+Hour_of_the_day + PULocationID + average.temperature +precipitation_NEW +snow.fall_NEW +DayOfTheWeek +Location_Hour ,train_data,method="anova")
+summary(Treefit2)
+train_data$Predict<- predict(Treefit2,newdata = train_data,type ='vector' )
+library(pROC)
+roc(train_data$Predict,train_data$Pickups)
+library(rattle)
+fancyRpartPlot(Treefit)
+
+plot(predict(Treefit2),train_data$Pickups,
+      xlab="predicted number of pickups",ylab="actual number of Pickups",col="Blue")
+
+plot(train_data$Hour_of_the_day, fit$residuals, 
++     ylab="Residuals", xlab="Hour_of_the_day", 
++     main="Residual analysis") 
+abline(0, 0) 
+```
+```{r}
+library(clusterGeneration)
+require(randomForest)
+library(mnormt)
+fitR=randomForest(Pickups~ PULocationID   , data=train_data)
+summary(fitR)
+str(train_data1)
+importance(fitR)
+varImpPlot(fit)
+```
+```{r}
+library(e1071)
+model_svm <- svm(Pickups ~ Hour_of_the_day + PULocationID + average.temperature +precipitation_NEW +snow.fall_NEW +DayOfTheWeek  ,train_data)
+```
+
