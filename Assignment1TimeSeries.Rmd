@@ -1,0 +1,57 @@
+---
+title: "Assignment 9/11 forecast"
+output: html_notebook
+---
+```{r}
+Sept11Travel.data<-read.csv("D:\\BAD\\Sept11Travel.csv")
+Sept11Travel.data
+
+
+Sept11Travel.ts<-ts(Sept11Travel.data, start = c(1990, 1), end = c(2004, 4), freq = 12)
+preSept11Travel.ts <- window(Sept11Travel.ts, start = c(1990, 1), end = c(2001, 9))
+postSept11Travel.ts <- window(Sept11Travel.ts, start = c(2001,9), end = c(2004,4))
+
+library("forecast")
+```
+
+```{r}
+Air.ts<-ts(Sept11Travel.data$Air.RPM..000s. , start = c(1990, 1), end = c(2001, 9), freq = 12)
+plot(Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)")
+
+```
+
+```{r}
+Rail.ts<-ts(Sept11Travel.data$Rail.PM , start = c(1990, 1), end = c(2001, 9), freq = 12)
+plot(Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)")
+```
+
+```{r}
+Car.ts<-ts(Sept11Travel.data$VMT..billions. , start = c(1990, 1), end = c(2001, 9), freq = 12)
+plot(Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)")
+```
+
+```{r}
+par(mfrow = c(2, 1))
+Air.lm <- forecast::tslm(Air.ts ~ trend + I(trend^2))
+plot(Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)", 
+     bty = "l")
+lines(Air.lm$fitted, lwd = 2)
+
+```
+
+```{r}
+par(mfrow = c(2, 1))
+Rail.lm <- forecast::tslm(Rail.ts ~ trend + I(trend^2))
+plot(Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)", 
+     bty = "l")
+lines(Rail.lm$fitted, lwd = 2)
+```
+
+```{r}
+par(mfrow = c(2, 1))
+Car.lm <- forecast::tslm(Car.ts ~ trend + I(trend^2))
+plot(Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)", 
+     bty = "l")
+lines(Car.lm$fitted, lwd = 2)
+```
+
