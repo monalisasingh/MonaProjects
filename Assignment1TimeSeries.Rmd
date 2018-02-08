@@ -54,4 +54,51 @@ plot(Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)",
      bty = "l")
 lines(Car.lm$fitted, lwd = 2)
 ```
+```{r}
+
+Air.lm.season <- tslm(Air.ts ~ season)
+summary(Air.lm.season)
+Air.lm.trend.season <- tslm(Air.ts ~ trend + I(trend^2) + season)
+summary(Air.lm.trend.season)
+Air.lm.trend.season.pred <- forecast(Air.lm.trend.season, level = 0)
+
+par(mfrow = c(2,1))
+plot(Air.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Air Travel in(000s)", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
+
+lines(Air.lm.trend.season$fitted, lwd = 2)
+
+```
+
+```{r}
+Rail.lm.season <- tslm(Rail.ts ~ season)
+summary(Rail.lm.season)
+Rail.lm.trend.season <- tslm(Rail.ts ~ trend + I(trend^2) + season)
+summary(Rail.lm.trend.season)
+Rail.lm.trend.season.pred <- forecast(Rail.lm.trend.season, level = 0)
+
+par(mfrow = c(2,1))
+plot(Rail.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Rail Travel (in 000s)", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
+
+lines(Rail.lm.trend.season$fitted, lwd = 2)
+```
+
+```{r}
+Car.lm.season <- tslm(Car.ts ~ season)
+summary(Car.lm.season)
+Car.lm.trend.season <- tslm(Car.ts ~ trend + I(trend^2) + season)
+summary(Car.lm.trend.season)
+Car.lm.trend.season.pred <- forecast(Car.lm.trend.season, level = 0)
+
+par(mfrow = c(2,1))
+plot(Car.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Car Travel (in 000s)", 
+ xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
+axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
+
+lines(Car.lm.trend.season$fitted, lwd = 2)
+```
+
 
