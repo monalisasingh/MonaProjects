@@ -6,6 +6,8 @@ output: html_notebook
 Sept11Travel.data<-read.csv("D:\\BAD\\Sept11Travel.csv")
 Sept11Travel.data
 
+```
+
 
 Sept11Travel.ts<-ts(Sept11Travel.data, start = c(1990, 1), end = c(2004, 4), freq = 12)
 preSept11Travel.ts <- window(Sept11Travel.ts, start = c(1990, 1), end = c(2001, 9))
@@ -15,90 +17,156 @@ library("forecast")
 ```
 
 ```{r}
-Air.ts<-ts(Sept11Travel.data$Air.RPM..000s. , start = c(1990, 1), end = c(2001, 9), freq = 12)
-plot(Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)")
+Air.ts<-ts(Sept11Travel.data$Air.RPM..000s. , start = c(1990, 1), end = c(2004, 4), freq = 12)
+preSept11Air.ts <- window(Air.ts, start = c(1990, 1), end = c(2001, 8))
+postSept11Air.ts <- window(Air.ts, start = c(2001,9), end = c(2004,4))
+par("mar")
+par(mar=c(1,1,1,1))
+
+plot(preSept11Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)", ylim=c(29672400,69003600))
+#Increase in Air travel pre Sept 11
 
 ```
 
 ```{r}
-Rail.ts<-ts(Sept11Travel.data$Rail.PM , start = c(1990, 1), end = c(2001, 9), freq = 12)
-plot(Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)")
+
+#Adjusting seasonality multiplicatively
+require(graphics)
+decompose_preSept11Air.ts = decompose(preSept11Air.ts, "multiplicative")
+adjust_preSept11Air.ts = preSept11Air.ts/decompose_preSept11Air.ts$seasonal
+plot(adjust_preSept11Air.ts, col = "Blue",lwd = 2)
+
+
+#checking the best model
+adjust_preSept11.Air.lm<-tslm(adjust_preSept11Air.ts ~ trend)
+summary(adjust_preSept11.Air.lm)
+
+adjust_preSept11.Air.lm.season<-tslm(adjust_preSept11Air.ts ~ season)
+summary(adjust_preSept11.Air.lm.season)
+
+adjust_preSept11.Air.lm.seasonalityTrend<-tslm(adjust_preSept11Air.ts ~ trend + season)
+summary(adjust_preSept11.Air.lm.seasonalityTrend)
+
+#residuals
+adjust_preSept11.Air.lm.seasonalityTrend$residuals
 ```
 
 ```{r}
-Car.ts<-ts(Sept11Travel.data$VMT..billions. , start = c(1990, 1), end = c(2001, 9), freq = 12)
-plot(Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)")
+#ACF for residuals
+Acf(adjust_preSept11.Air.lm.seasonalityTrend$residuals, lag.max = 12, main="")
 ```
 
 ```{r}
-par(mfrow = c(2, 1))
-Air.lm <- forecast::tslm(Air.ts ~ trend + I(trend^2))
-plot(Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)", 
-     bty = "l")
-lines(Air.lm$fitted, lwd = 2)
+#Model on Air with linear trend and addtive seasonality
+preSept11Air.lm<- tslm(preSept11Air.ts ~ trend )
+preSept11Air.lm
+#Adding season
+preSept11Air.lm.season <- tslm(preSept11Air.ts ~ trend + season)
+summary(preSept11Air.lm.season)
+par("mar")
+par(mar=c(1,1,1,1))
+plot(preSept11Air.lm.season.ts)
 
+lines(preSept11Air.lm$fitted, lwd = 1)
+#Adjusting seasonality additive
+require(graphics)
+decomposed_preSept11Air.ts = decompose(preSept11Air.ts, "additive")
+adjusted_preSept11Air.ts = preSept11Air.ts-decomposed_preSept11Air.ts$seasonal
+plot(adjusted_preSept11Air.ts, col = "Blue",lwd = 2)
+adjusted_preSept11.Air.lm.Trend<-tslm(adjusted_preSept11Air.ts ~ trend)
+summary(adjusted_preSept11.Air.lm.Trend)
+
+Airnaive.pred <- forecast::naive(adjusted_preSept11Air.ts, h = 36)
+Airsnaive.pred <- forecast::snaive(adjusted_preSept11Air.ts, h = 36)
+Airnaive.pred
+Airsnaive.pred
 ```
 
 ```{r}
-par(mfrow = c(2, 1))
-Rail.lm <- forecast::tslm(Rail.ts ~ trend + I(trend^2))
-plot(Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)", 
-     bty = "l")
-lines(Rail.lm$fitted, lwd = 2)
+#forecast
+plot(Air.ts,  ylab = "Air Passengers Revenue Miles ($BillionS)", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
+
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Airnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Airsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 700999930))
+lines(c(2004.25, 2004.25), c(0, 700999930))
+text(1994.25, 69103630, "Training")
+text(2002.75, 69999990, "Validation")
+text(2004.90, 69103630, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
+```
+
+
+
+```{r}
+#Rail ts
+Rail.ts<-ts(Sept11Travel.data$Rail.PM , start = c(1990, 1), end = c(2004, 4), freq = 12)
+preSept11Rail.ts <- window(Rail.ts, start = c(1990, 1), end = c(2001, 8))
+postSept11Rail.ts <- window(Rail.ts, start = c(2001,9), end = c(2004,4))
+
+plot(preSept11Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)")
+#additive seasonality
+decomposed_preSept11Rail.ts = decompose(preSept11Rail.ts, "additive")
+adjusted_preSept11Rail.ts = preSept11Rail.ts-decomposed_preSept11Rail.ts$seasonal
+plot(adjusted_preSept11Rail.ts, col = "Blue",lwd = 2)
+adjusted_preSept11.Rail.lm.Trend<-tslm(adjusted_preSept11Rail.ts ~ trend)
+summary(adjusted_preSept11.Rail.lm.Trend)
+
+adjusted_preSept11.Rail.lm.Trendquad<- tslm(adjusted_preSept11Rail.ts ~ trend + I(trend^2))
+summary(adjusted_preSept11.Rail.lm.Trendquad)
+
+Railnaive.pred <- forecast::naive(adjusted_preSept11Rail.ts, h = 36)
+Railsnaive.pred <- forecast::snaive(adjusted_preSept11Rail.ts, h = 36)
+Railnaive.pred
+Railsnaive.pred
+
+#forecast
+plot(Rail.ts,  ylab = "Rail Passengers", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
+
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Railnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Railsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 700999930))
+lines(c(2004.25, 2004.25), c(0, 700999930))
+text(1994.25, 69100000, "Training")
+text(2002.75, 69990000, "Validation")
+text(2004.90, 69100000, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
 ```
 
 ```{r}
-par(mfrow = c(2, 1))
-Car.lm <- forecast::tslm(Car.ts ~ trend + I(trend^2))
-plot(Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)", 
-     bty = "l")
-lines(Car.lm$fitted, lwd = 2)
-```
-```{r}
+Car.ts<-ts(Sept11Travel.data$VMT..billions. , start = c(1990, 1), end = c(2004, 4), freq = 12)
+preSept11Car.ts <- window(Car.ts, start = c(1990, 1), end = c(2001, 8))
+postSept11Car.ts <- window(Car.ts, start = c(2001,9), end = c(2004,4))
 
-Air.lm.season <- tslm(Air.ts ~ season)
-summary(Air.lm.season)
-Air.lm.trend.season <- tslm(Air.ts ~ trend + I(trend^2) + season)
-summary(Air.lm.trend.season)
-Air.lm.trend.season.pred <- forecast(Air.lm.trend.season, level = 0)
+plot(preSept11Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)")
+#adjusting seasonality additively
+decomposed_preSept11Car.ts = decompose(preSept11Car.ts, "additive")
+adjusted_preSept11Car.ts = preSept11Car.ts-decomposed_preSept11Car.ts$seasonal
+plot(adjusted_preSept11Car.ts, col = "Blue",lwd = 2)
+adjusted_preSept11.Car.lm.Trend<-tslm(adjusted_preSept11Car.ts ~ trend)
+summary(adjusted_preSept11.Car.lm.Trend)
 
-par(mfrow = c(2,1))
-plot(Air.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Air Travel in(000s)", 
- xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
-axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
+Carnaive.pred <- forecast::naive(adjusted_preSept11Car.ts, h = 36)
+Carsnaive.pred <- forecast::snaive(adjusted_preSept11Car.ts, h = 36)
+Carnaive.pred
+Carsnaive.pred
+#forecast
+plot(Car.ts,  ylab = "Vehicle Travel", xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2005), main = "")
 
-lines(Air.lm.trend.season$fitted, lwd = 2)
-
-```
-
-```{r}
-Rail.lm.season <- tslm(Rail.ts ~ season)
-summary(Rail.lm.season)
-Rail.lm.trend.season <- tslm(Rail.ts ~ trend + I(trend^2) + season)
-summary(Rail.lm.trend.season)
-Rail.lm.trend.season.pred <- forecast(Rail.lm.trend.season, level = 0)
-
-par(mfrow = c(2,1))
-plot(Rail.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Rail Travel (in 000s)", 
- xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
-axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
-
-lines(Rail.lm.trend.season$fitted, lwd = 2)
+axis(1, at = seq(1990, 2005, 1), labels = format(seq(1990, 2005, 1)))
+lines(Carnaive.pred$mean, lwd = 2, col = "blue", lty = 1)
+lines(Carsnaive.pred$mean, lwd = 2, col = "red", lty = 1)
+lines(c(2004.70 - 3, 2004.70 - 3), c(0, 700999930))
+lines(c(2004.25, 2004.25), c(0, 700999930))
+text(1994.25, 69103630, "Training")
+text(2002.75, 69999990, "Validation")
+text(2004.90, 69103630, "Future")
+arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 30)
 ```
 
-```{r}
-Car.lm.season <- tslm(Car.ts ~ season)
-summary(Car.lm.season)
-Car.lm.trend.season <- tslm(Car.ts ~ trend + I(trend^2) + season)
-summary(Car.lm.trend.season)
-Car.lm.trend.season.pred <- forecast(Car.lm.trend.season, level = 0)
+                  
 
-par(mfrow = c(2,1))
-plot(Car.lm.trend.season.pred, ylim = c(1300, 2600),  ylab = "Car Travel (in 000s)", 
- xlab = "Time", bty = "l", xaxt = "n", xlim = c(1990,2001.25), main = "", flty = 2)
-axis(1, at = seq(1990, 2001, 9), labels = format(seq(1990, 2001, 9))) 
-
-lines(Car.lm.trend.season$fitted, lwd = 2)
-```
 
 
