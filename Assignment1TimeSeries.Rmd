@@ -23,8 +23,13 @@ postSept11Air.ts <- window(Air.ts, start = c(2001,9), end = c(2004,4))
 par("mar")
 par(mar=c(1,1,1,1))
 
-plot(preSept11Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)", ylim=c(29672400,69003600))
-#Increase in Air travel pre Sept 11
+#plotting pre event Air
+plot(preSept11Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)") 
+#Increase in Air travel until Sept 11
+
+#plotting post event Air
+plot(postSept11Air.ts, xlab = "Time", ylab = "Air Travel (in 000s)")
+
 
 ```
 
@@ -105,7 +110,11 @@ Rail.ts<-ts(Sept11Travel.data$Rail.PM , start = c(1990, 1), end = c(2004, 4), fr
 preSept11Rail.ts <- window(Rail.ts, start = c(1990, 1), end = c(2001, 8))
 postSept11Rail.ts <- window(Rail.ts, start = c(2001,9), end = c(2004,4))
 
+#plotting pre event Rail
 plot(preSept11Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)")
+#plotting post event Rail
+plot(postSept11Rail.ts, xlab = "Time", ylab = "Rail Travel (in 000s)")
+
 #additive seasonality
 decomposed_preSept11Rail.ts = decompose(preSept11Rail.ts, "additive")
 adjusted_preSept11Rail.ts = preSept11Rail.ts-decomposed_preSept11Rail.ts$seasonal
@@ -136,11 +145,16 @@ arrows(2001, 67000000, 1990, 67000000, code = 3, length = 0.1, lwd = 1,angle = 3
 ```
 
 ```{r}
+#Car ts
 Car.ts<-ts(Sept11Travel.data$VMT..billions. , start = c(1990, 1), end = c(2004, 4), freq = 12)
 preSept11Car.ts <- window(Car.ts, start = c(1990, 1), end = c(2001, 8))
 postSept11Car.ts <- window(Car.ts, start = c(2001,9), end = c(2004,4))
 
+#plotting pre event Vehicle/Car
 plot(preSept11Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)")
+#plotting post event Vehicle/Car
+plot(postSept11Car.ts, xlab = "Time", ylab = "Car Travel (in 000s)")
+
 #adjusting seasonality additively
 decomposed_preSept11Car.ts = decompose(preSept11Car.ts, "additive")
 adjusted_preSept11Car.ts = preSept11Car.ts-decomposed_preSept11Car.ts$seasonal
