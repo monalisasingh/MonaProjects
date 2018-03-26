@@ -1,0 +1,260 @@
+
+
+```{r}
+library(mlbench)
+library(caret)
+
+
+library(dplyr)
+library(ISLR)
+library(glmnet)
+library(glmnetUtils)
+library(plotmo)
+```
+
+```{r}
+My.Data<-read.csv('D:\\ADM\\train_v3.csv')
+```
+
+```{r}
+My.Data1<-My.Data
+#Removing columns that had only 0 throughout
+My.Data1$f33<-NULL
+My.Data1$f34<-NULL
+My.Data1$f35<-NULL
+My.Data1$f37<-NULL
+My.Data1$f38<-NULL
+```
+
+```{r}
+#Checking for duplicate columns and removing them
+My.Data1[!duplicated(as.list(My.Data1))]
+My.Data2<-My.Data1[!duplicated(as.list(My.Data1))]
+```
+
+```{r}
+#Removing NA Values
+My.Data3<-My.Data2[complete.cases(My.Data2),]
+```
+
+```{r}
+#Removing loss and X(id) before applying Z Transformation
+My.Data3a<-My.Data3$loss
+My.Data3$loss<-NULL
+My.Data3b<-My.Data3$X
+My.Data3$X<-NULL
+My.Data3[] <- lapply(My.Data3, scale)
+```
+
+```{r}
+My.Data3Transformed<-My.Data3
+```
+
+```{r}
+#Removing those Columns that have zero variance in them
+My.Data3Transformed1<-My.Data3Transformed
+zv<-apply(My.Data3Transformed1,2,function(x)length(unique(x))==1)
+zv
+My.Data3Transformed2<-My.Data3Transformed1[,!zv]
+str(My.Data3Transformed2)
+```
+
+```{r}
+#Finding Correlation and removing Correlated attributes
+NewTrain<-cor(My.Data3Transformed2, use='complete.obs')
+hc=findCorrelation(NewTrain, cutoff = 0.95)
+reduced_train<-My.Data3Transformed2[,-hc]
+dim(reduced_train)
+```
+
+```{r}
+#Restoring loss and X and creating default column from loss
+reduced_train$loss<-My.Data3a
+reduced_train$X<-My.Data3b
+reduced_train$default<-ifelse(reduced_train$loss>0, 1, 0) #default HERE is loss binary
+```
+
+```{r}
+#Splitting the data into train and test
+library(caTools)
+  set.seed(1000)
+  #split according to the target variable=Default
+  split = sample.split(reduced_train, SplitRatio = 0.8)
+  Traindata = subset(reduced_train, split == TRUE)
+  Testdata = subset(reduced_train, split == FALSE)
+```
+
+```{r}
+#Lasso Regression Model for checking Important Variables according to the best lambda
+cvfit = cv.glmnet(default~. -X -loss ,data=Traindata, alpha = 1, nlambda =100)
+plot(cvfit)
+cvfit$lambda.min
+coef(cvfit, s = "lambda.min")
+summary(cvfit)
+```
+
+
+```{r}
+#Predicting this model on Test data
+predicts_glm_lasso<-predict(cvfit, newdata = Testdata, s = "lambda.min")
+MSE_glm_lasso=mean(sqrt((predicts_glm_lasso-Testdata$default)^2))
+print(MSE_glm_lasso)
+summary(MSE_glm_lasso)
+View(predicts_glm_lasso)
+```
+
+```{r}
+#Checking model's performance
+library(Metrics)
+MAE= mae(Testdata$default, MSE_glm_lasso)
+print(MAE)
+```
+```{r}
+coef(cvfit)
+```
+
+
+```{r}
+#Classification model using important features according to lasso
+cvfitglm1 = glm(default~ f3 +f13 +f26 +f44 +f45   +f55 +f57+f67 +f69 +f71 +f73 +f75 +f81 +f91 +f102 +f123 +f129+f132+f134+f139+f143+f146+f151+f163+f172+f190+f191+f198 +f221+f240+f251+f261+f268+f298+f301+f306+ f317+f322+f333+f340+f359+f361+f364+f383+f403+f406+f411+f419+f422+f428+f433+f442+f461+f471+f489+f512+f514+f518+f523+f530+f533+f536+f546+f598+f604+f614+f619+f628+f639+f654+f669+f671+f672+f674+f677+f679+f680+f693+f724+f776,data=Traindata,family = binomial())
+summary(cvfitglm1)
+
+predicts_glm<-predict(cvfitglm1, newdata = Testdata, type="response")
+residuals(cvfitglm1, type="deviance")
+View(predicts_glm)
+library(pROC)
+roc(Testdata$default, predicts_glm)
+  plot(roc(Testdata$default, predicts_glm), col='red', lwd=3)
+```
+
+```{r}
+#trying simple classification model to see if it works better
+TrainD<-Traindata
+TrainD$loss<-NULL
+glmmodel<-glm(default~. -X , family = "binomial", data = TrainD)
+summary(glmmodel)
+
+
+predicts_glm1<-predict(glmmodel, newdata = Testdata, type="response")
+residuals(glmmodel, type="deviance")
+library(pROC)
+roc(Testdata$default, predicts_glm1)
+  plot(roc(Testdata$default, predicts_glm1), col='red', lwd=3)
+  
+predicts_glm2<-predict(glmmodel, newdata = Traindata, type="response")  
+```
+
+
+```{r}
+#Taking predictions from this model and applying it on train and test data
+library(dplyr)
+Data=Traindata
+Dataa=Testdata
+Data$predDefault=predicts_glm2
+Dataa$predDefault=predicts_glm1
+Data1=Data[,c("default","predDefault")]
+Data1
+Dataa1=Dataa[,c("default","predDefault")]
+Dataa1
+```
+
+```{r}
+#Regression Model
+#Taking only those who had default 1 (i.e loss binary=1)
+Traindata1<-subset(Traindata, Traindata$default==1)
+Traindata1$default
+Testdata1<-subset(Testdata, Testdata$default==1)
+Testdata1$default
+
+cvfit1<-cv.glmnet(loss~. -X-default,data =Traindata1, alpha=1, nlambda=100)
+plot(cvfit1)
+cvfit1$lambda.min
+coef(cvfit1, s = "lambda.min")
+summary(cvfit1)
+
+predicts_4<-predict(cvfit1, newdata= Testdata1 , s = "lambda.min")
+View(predicts_4)
+
+
+Td<-Testdata1
+Td$predloss<-predicts_4
+c1<-Td[,c("X","loss","predloss")]
+```
+
+```{r}
+library(Metrics)
+MAE11= mae(Testdata1$loss, predicts_4)
+print(MAE11)
+```
+
+```{r}
+#different thresholds to get better MAE
+Testdata2=Dataa
+Testdata3<-subset(Testdata2, predDefault>0.3)#This gave us the most reliable MAE
+
+#Check for threshold
+library(dplyr)
+T1=subset(Testdata3, default>0)#Regression model using these number of people who defaulted
+nrow(T1)/nrow(Testdata3)#% of defaulters in regression model from classification model. 
+
+predicts_5<-predict(cvfit1, newdata= Testdata3 , s = "lambda.min")
+library(Metrics)
+MAEnew= mae(Testdata3$loss, predicts_5)
+MAEnew
+
+#Output on Sample Tesdata
+Testdata3$Predloss=abs(predicts_5)
+c2=Testdata3[,c("X","loss","Predloss")]
+```
+
+```{r}
+My.TestData<-read.csv('D:\\ADM\\test__no_lossv3.csv')
+
+My.TestData1=My.TestData[complete.cases(My.TestData),]
+
+
+zv <- apply(My.TestData1, 2, function(x) length(unique(x)) == 1)
+My.TestData2 <- My.TestData1[, !zv]
+
+My.Testdata3<-My.TestData2$X
+My.TestData2$X<-NULL
+My.TestData3<-My.TestData2
+My.TestData3[] <- lapply(My.TestData2, scale)
+My.TestData3$X<-My.Testdata3
+
+```
+
+```{r}
+#Applying the classification model 
+library(dplyr)
+Prediction<-predict(glmmodel,My.TestData3,type='response')
+Prediction
+
+#Results
+c3=My.TestData3
+c3$Defaultprob=Prediction
+c4=c3[,c("X","Defaultprob")]
+```
+
+```{r}
+#Applying threshold to regression model
+My.TestData4=subset(c3,Defaultprob>0.3)
+My.TestData5=My.TestData4
+My.TestData5$Defaultprob=NULL
+```
+
+```{r}
+#applying the Regression model
+predicts_glm_lasso<-predict(cvfit1, newdata = My.TestData5,s = "lambda.min")
+predicts_glm_lasso
+#Output File
+c5=My.TestData5
+c5$Defaults=abs(predicts_glm_lasso)
+c6=c5[,c("X","Defaults")] 
+write.csv(c6, file = "Loan Predicts.csv")
+```
+
+
+
+
+
